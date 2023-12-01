@@ -1,0 +1,14 @@
+---
+# I'm not making this more difficult for myself than it already is...
+skip_list:
+  - yaml[trailing-spaces]
+  - yaml[line-length]
+  - var-naming
+
+# Exclude downloaded roles and collections from linting
+exclude_paths:
+  - collections/**
+  - roles/**
+  - changelogs
+
+...

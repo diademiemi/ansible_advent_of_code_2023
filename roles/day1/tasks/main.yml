@@ -1,0 +1,92 @@
+---
+- name: Split input into separate lines
+  tags: part1
+  ansible.builtin.set_fact:
+    lines: "{{ day1_input | split('\n') }}"
+
+- name: Get only the integers from the lines
+  tags: part1
+  ansible.builtin.set_fact:
+    lines_only_int: "{{ lines_only_int | default([]) + [current_line] }}"
+  loop: "{{ lines }}"
+  vars:
+    current_line: "{{ item | regex_replace('[a-z]+', '') }}"
+
+- name: Select first and last integer from the lines
+  tags: part1
+  ansible.builtin.set_fact:
+    lines_part1: "{{ lines_part1 | default([]) + [current_line] }}"
+  loop: "{{ lines_only_int }}"
+  vars:
+    first_int: "{{ item | list | json_query('[0]')}}"
+    last_int: "{{ item | list | json_query('[-1]')}}"
+    current_line: "{{ first_int | string + last_int | string }}"
+
+- name: ANSWER TO PART 1 | Sum the integers
+  tags: part1
+  ansible.builtin.debug:
+    msg: "{{ lines_part1 | map('int') | sum }}"
+
+- name: Reset vars for part 2
+  tags: part2
+  ansible.builtin.set_fact:
+    lines: []
+    lines_only_int: []
+
+- name: Split part 2 input into separate lines
+  tags: part2
+  ansible.builtin.set_fact:
+    lines: "{{ day1_input_part2 | split('\n') }}"
+
+- name: Set lookup map
+  tags: part2
+  ansible.builtin.set_fact:
+    int_lookup_map:
+      '1': 1
+      '2': 2
+      '3': 3
+      '4': 4
+      '5': 5
+      '6': 6
+      '7': 7
+      '8': 8
+      '9': 9
+      'one': 1
+      'two': 2
+      'three': 3
+      'four': 4
+      'five': 5
+      'six': 6
+      'seven': 7
+      'eight': 8
+      'nine': 9
+
+- name: Get only the integers from the lines
+  tags: part2
+  ansible.builtin.set_fact:
+    lines_only_int: "{{ lines_only_int | default([]) + [current_line] }}"
+  loop: "{{ lines }}"
+  vars:
+    regex_query: '(?=([1-9]|one|two|three|four|five|six|seven|eight|nine))'
+    regex_matches: "{{ item | regex_findall(regex_query) }}"
+    first_int: "{{ regex_matches | json_query('[0]') }}"
+    last_int: "{{ regex_matches | json_query('[-1]') }}"
+    current_line: "{{ int_lookup_map[first_int] | string + int_lookup_map[last_int] | string }}"
+
+- name: Select first and last integer from the lines
+  tags: part2
+  ansible.builtin.set_fact:
+    lines_part2: "{{ lines_part2 | default([]) + [current_line] }}"
+  loop: "{{ lines_only_int }}"
+  vars:
+    first_int: "{{ item | list | json_query('[0]')}}"
+    last_int: "{{ item | list | json_query('[-1]')}}"
+    current_line: "{{ first_int | string + last_int | string }}"
+
+- name: ANSWER TO PART 2 | Sum the new integers
+  tags: part2
+  ansible.builtin.debug:
+    msg: "{{ lines_part2 | map('int') | sum }}"
+
+
+...

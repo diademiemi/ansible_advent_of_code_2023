@@ -1,0 +1,7 @@
+---
+- name: Advent of Code 2023
+  hosts: localhost
+  roles:
+    - { role: day1, tags: ['day1'] }
+
+...
