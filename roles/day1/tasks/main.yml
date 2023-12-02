@@ -1,19 +1,30 @@
 ---
+# Set the input
+- name: Set example input
+  ansible.builtin.set_fact:
+    day1_input: |-
+      1abc2
+      pqr3stu8vwx
+      a1b2c3d4e5f
+      treb7uchet
+  when: day1_input is not defined
+
+# Get a list we can loop over
 - name: Split input into separate lines
-  tags: part1
   ansible.builtin.set_fact:
     lines: "{{ day1_input | split('\n') }}"
 
+# Use a regex to remove all the letters from the lines
 - name: Get only the integers from the lines
-  tags: part1
   ansible.builtin.set_fact:
     lines_only_int: "{{ lines_only_int | default([]) + [current_line] }}"
   loop: "{{ lines }}"
   vars:
     current_line: "{{ item | regex_replace('[a-z]+', '') }}"
 
+# Select the first and last integer from the lines
+# This can be done with json_query, just selecting the first and last (-1, negative indexing) element 
 - name: Select first and last integer from the lines
-  tags: part1
   ansible.builtin.set_fact:
     lines_part1: "{{ lines_part1 | default([]) + [current_line] }}"
   loop: "{{ lines_only_int }}"
@@ -22,24 +33,28 @@
     last_int: "{{ item | list | json_query('[-1]')}}"
     current_line: "{{ first_int | string + last_int | string }}"
 
+# By casting to int and summing them, we get the answer to part 1
 - name: ANSWER TO PART 1 | Sum the integers
-  tags: part1
   ansible.builtin.debug:
     msg: "{{ lines_part1 | map('int') | sum }}"
 
-- name: Reset vars for part 2
-  tags: part2
+# This has a different example input
+- name: Set example input
   ansible.builtin.set_fact:
-    lines: []
-    lines_only_int: []
+    day1_input_part2: |-
+      two1nine
+      eightwothree
+      abcone2threexyz
+      xtwone3four
+      4nineeightseven2
+      zoneight234
+      7pqrstsixteen
+  when: day1_input_part2 is not defined
 
-- name: Split part 2 input into separate lines
-  tags: part2
-  ansible.builtin.set_fact:
-    lines: "{{ day1_input_part2 | split('\n') }}"
-
+# Set a lookup map for the integers
+# This is used to convert the strings to integers
+# We also just include the integers as strings, this is easier than including it as logic in the code
 - name: Set lookup map
-  tags: part2
   ansible.builtin.set_fact:
     int_lookup_map:
       '1': 1
@@ -61,32 +76,39 @@
       'eight': 8
       'nine': 9
 
+# Reset the vars for part 2
+# Redefine lines for if the input changed
+# Redefine the only int lines since the lines changed AND we have new requirements for what constitutes an integer
+- name: Reset vars for part 2
+  ansible.builtin.set_fact:
+    lines: []
+    lines_only_int: []
+
+# Get a list we can loop over
+- name: Split part 2 input into separate lines
+  ansible.builtin.set_fact:
+    lines: "{{ day1_input_part2 | split('\n') }}"
+
+# We use a new regex here to find the integers, instead of removing characters
 - name: Get only the integers from the lines
-  tags: part2
   ansible.builtin.set_fact:
     lines_only_int: "{{ lines_only_int | default([]) + [current_line] }}"
   loop: "{{ lines }}"
   vars:
+    # Big regex for finding integers OR string integers
     regex_query: '(?=([1-9]|one|two|three|four|five|six|seven|eight|nine))'
+    # Find all the matches
     regex_matches: "{{ item | regex_findall(regex_query) }}"
+    # Select the first and last integer from the matches
     first_int: "{{ regex_matches | json_query('[0]') }}"
     last_int: "{{ regex_matches | json_query('[-1]') }}"
+    # Convert the integers to strings and then concatenate them
     current_line: "{{ int_lookup_map[first_int] | string + int_lookup_map[last_int] | string }}"
 
-- name: Select first and last integer from the lines
-  tags: part2
-  ansible.builtin.set_fact:
-    lines_part2: "{{ lines_part2 | default([]) + [current_line] }}"
-  loop: "{{ lines_only_int }}"
-  vars:
-    first_int: "{{ item | list | json_query('[0]')}}"
-    last_int: "{{ item | list | json_query('[-1]')}}"
-    current_line: "{{ first_int | string + last_int | string }}"
-
+# By casting to int and summing them, we get the answer to part 2
 - name: ANSWER TO PART 2 | Sum the new integers
-  tags: part2
   ansible.builtin.debug:
-    msg: "{{ lines_part2 | map('int') | sum }}"
+    msg: "{{ lines_only_int | map('int') | sum }}"
 
 
 ...
