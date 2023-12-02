@@ -1,0 +1,99 @@
+---
+# Set the input
+- name: Set example input
+  ansible.builtin.set_fact:
+    day2_input: |-
+      Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
+      Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
+      Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
+      Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
+      Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green
+  when: day2_input is not defined
+
+# These are the maximums for each colour of cubes
+- name: Set limits
+  ansible.builtin.set_fact:
+    red_only: 12
+    green_only: 13
+    blue_only: 14
+
+# Get a list we can loop over
+- name: Split input into separate lines
+  ansible.builtin.set_fact:
+    lines: "{{ day2_input | split('\n') }}"
+
+# Store as dict with the game number as key. We can loop over this later, allows us to easily get the game ID
+- name: Store as dict with the game number as key
+  ansible.builtin.set_fact:
+    games_dict: "{{ games_dict | default({}) | combine({game_id: game_line}) }}"
+  loop: "{{ lines }}"
+  vars:
+    game_id: "{{ item | regex_findall('[0-9]+') | first }}"
+    game_line: "{{ item | regex_replace('^Game [0-9]+', '') }}"
+
+# Here we split the line into subsets of cubes shown
+# Then we use regex to get the number of cubes of each colour
+# We then get the maximum of each colour shown
+# We set this into a dict we can access later
+- name: Loop over dict and set facts
+  ansible.builtin.set_fact:
+    games_dict_seperated: "{{ games_dict_seperated | default({}) |
+      combine(
+      {game_id: 
+        {'blue': total_blue, 'red': total_red, 'green': total_green}
+      })}}"
+  loop: "{{ games_dict | dict2items }}"
+  vars:
+    game_id: "{{ item.key }}"
+    game_subsets: "{{ item.value | regex_replace(': ', '') | split(';') | map('trim') }}"
+    total_blue: "{{ game_subsets | map('regex_search', '([0-9]+) blue', '\\1') | flatten | map('int') | max }}"
+    total_red: "{{ game_subsets | map('regex_search', '([0-9]+) red', '\\1') | flatten | map('int') | max }}"
+    total_green: "{{ game_subsets | map('regex_search', '([0-9]+) green', '\\1') | flatten | map('int') | max }}"
+
+# We now access this dict and loop over it
+# We get the maximum of each colour
+# We then check if it is less than or equal to the limi
+# If all colours are less than or equal to the limit, we the game ID it to a list
+- name: Get games where all the colours don't exceed the limit
+  ansible.builtin.set_fact:
+    games_possible: "{{ games_possible | default([]) + [game_id] }}"
+  loop: "{{ games_dict_seperated | dict2items }}"
+  vars:
+    game_id: "{{ item.key }}"
+    game_dict: "{{ item.value }}"
+    total_blue: "{{ game_dict['blue'] }}"
+    total_red: "{{ game_dict['red'] }}"
+    total_green: "{{ game_dict['green'] }}"
+  when: 
+    - total_blue | int <= blue_only
+    - total_red | int <= red_only
+    - total_green | int <= green_only
+
+# By summing the list, we get the answer to part 1
+- name: ANSWER TO PART 1 | 
+  ansible.builtin.debug:
+    msg: "{{ games_possible | map('int') | sum }}"
+
+# We now want to know what it'd take for each game to be possible
+# The power is defined as the product of the number of cubes of each colours max required
+# Since we already know the max required, we can just multiply them together
+# Add the powers to a list, we don't need to store the game ID anymore
+- name: Get the power of each game
+  ansible.builtin.set_fact:
+    games_power: "{{ games_power | default([]) + [game_power] }}"
+  loop: "{{ games_dict_seperated | dict2items }}"
+  vars:
+    game_id: "{{ item.key }}"
+    game_dict: "{{ item.value }}"
+    total_blue: "{{ game_dict['blue'] }}"
+    total_red: "{{ game_dict['red'] }}"
+    total_green: "{{ game_dict['green'] }}"
+    game_power: "{{ total_blue | int * total_red | int * total_green | int }}"
+
+# By summing the list, we get the answer to part 2
+- name: ANSWER TO PART 2 | 
+  ansible.builtin.debug:
+    msg: "{{ games_power | map('int') | sum }}"
+
+
+...
