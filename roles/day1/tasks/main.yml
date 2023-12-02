@@ -51,6 +51,16 @@
       7pqrstsixteen
   when: day1_input_part2 is not defined
 
+# Some example input that helped me. Ensure that this matches "eight" not "one" in the firsts line
+# Should be 155, NOT 142
+# - name: Set example input
+#   ansible.builtin.set_fact:
+#     day1_input_part2: |-
+#       sevenhk5oneight
+#       ilk7gfive7
+#   when: day1_input_part2 is not defined
+
+
 # Set a lookup map for the integers
 # This is used to convert the strings to integers
 # We also just include the integers as strings, this is easier than including it as logic in the code
@@ -96,6 +106,7 @@
   loop: "{{ lines }}"
   vars:
     # Big regex for finding integers OR string integers
+    # We need to use a regex lookahead to find the string integers, since they can overlap with other integers (oneight -> one, eight, NOT just one)
     regex_query: '(?=([1-9]|one|two|three|four|five|six|seven|eight|nine))'
     # Find all the matches
     regex_matches: "{{ item | regex_findall(regex_query) }}"
