@@ -33,8 +33,15 @@
 
 - name: Loop through every coordinate
   ansible.builtin.set_fact:
+    # PART 1:
+    # Add the coordinates to a list, so we don't check them again (e.g. so 123 become 123, 23, 3)
     coords_checked_already: "{{ coords_checked_already | default([]) + numbers_checked }}"
+    # If the number is adjacent to a symbol, add it to the list of numbers
     numbers: "{% if is_adjacent_to_symbol | bool %}{{ numbers | default([]) + [number] }}{% else %}{{ numbers | default([]) }}{% endif %}"
+    # PART 2:
+    # Set the gears dict
+    # it should end up looking like { x: y: [gears_related_numbers]}
+    gears_dict: "{{ gears_dict | default({}) | combine(additional_gears_dict) }}"
   vars:
     # Current character
     current_item: "{{ rows[item.0][item.1] }}"
@@ -49,18 +56,26 @@
     # Every number it adds to the string (which we later cast to int)
     # Adds to the coordinates we've checked, so we don't get duplicates
     _look_right_nums: "
+      {# COMMENT: Check if we are at a number #}
       {% if current_is_number | bool %}
+        {# COMMENT: Skip if we already have this in a different number #}
         {% if [item.0, item.1] not in coords_checked_already | default([]) %}
+          {# COMMENT: Set vars so we track symbols, whether to break the loop and the numbers #}
           {%- set ns = namespace(has_symbol = false, continues = true, numstring = '', coords_checked = []) -%}
           {%- set ns.numstring = ns.numstring + current_item -%}
           {% if ns.numstring != '' %}
+            {# COMMENT: Add current coordinate to coords checked #}
             {%- set ns.coords_checked = ns.coords_checked + [(item.0, item.1)] -%}
+            {# COMMENT: Loop over every character to the right of the current character #}
             {% for i in range(0, look_right | length) %}
+              {# COMMENT: If we can continue, and the current character is a number #}
               {% if ns.continues %}
                 {% if look_right[i] | regex_search('[0-9]') != None %}
                   {%- set ns.coords_checked = ns.coords_checked + [(item.0, item.1 + 1 + i)] -%}
+                  {# COMMENT: Concatenate the number to the string #}
                   {%- set ns.numstring = ns.numstring + look_right[i] -%}
                 {% else %}
+                  {# COMMENT: If this isn't a number, break the loop #}
                   {%- set ns.continues = false -%}
                 {% endif %}
               {% endif %}
@@ -85,48 +100,48 @@
       {# COMMENT: Set empty list #}
       {% set ns = namespace(chars = []) %}
 
+      {# COMMENT: If we are a number #}
       {% if number != '' %}
         {% for coord in numbers_checked %}
 
-          {# COMMENT: Check if we wouldn't be going into negative indexing #}
           {% if coord.0 - 1 >= 0 %}
             {% if coord.1 - 1 >= 0 %}
               {# COMMENT: Check if this is a number we checked #}
               {% if (coord.0 - 1, coord.1 - 1) not in numbers_checked %}
-                {%- set ns.chars = ns.chars + [rows[coord.0 - 1][coord.1 - 1]] -%}
+                {%- set ns.chars = ns.chars + [[coord.0 - 1, coord.1 - 1, rows[coord.0 - 1][coord.1 - 1]]] -%}
               {% endif %}
             {% endif %}
             {% if (coord.0 - 1, coord.1) not in numbers_checked %}
-              {%- set ns.chars = ns.chars + [rows[coord.0 - 1][coord.1]] -%}
+              {%- set ns.chars = ns.chars + [[coord.0 - 1, coord.1, rows[coord.0 - 1][coord.1]]] -%}
             {% endif %}
             {% if coord.1 + 1 < row_length | int %}
               {% if (coord.0 - 1, coord.1 + 1) not in numbers_checked %}
-                {%- set ns.chars = ns.chars + [rows[coord.0 - 1][coord.1 + 1]] -%}
+                {%- set ns.chars = ns.chars + [[coord.0 - 1, coord.1 + 1, rows[coord.0 - 1][coord.1 + 1]]] -%}
               {% endif %}
             {% endif %}
           {% endif %}
           {% if coord.1 - 1 >= 0 %}
             {% if (coord.0, coord.1 - 1) not in numbers_checked %}
-              {%- set ns.chars = ns.chars + [rows[coord.0][coord.1 - 1]] -%}
+              {%- set ns.chars = ns.chars + [[coord.0, coord.1 - 1, rows[coord.0][coord.1 - 1]]] -%}
             {% endif %}
           {% endif %}
           {% if coord.1 + 1 < row_length | int %}
             {% if (coord.0, coord.1 + 1) not in numbers_checked %}
-              {%- set ns.chars = ns.chars + [rows[coord.0][coord.1 + 1]] -%}
+              {%- set ns.chars = ns.chars + [[coord.0, coord.1 + 1, rows[coord.0][coord.1 + 1]]] -%}
             {% endif %}
           {% endif %}
           {% if coord.0 + 1 < rows_length | int %}
             {% if coord.1 - 1 >= 0 %}
               {% if (coord.0 + 1, coord.1 - 1) not in numbers_checked %}
-                {%- set ns.chars = ns.chars + [rows[coord.0 + 1][coord.1 - 1]] -%}
+                {%- set ns.chars = ns.chars + [[coord.0 + 1, coord.1 - 1, rows[coord.0 + 1][coord.1 - 1]]] -%}
               {% endif %}
             {% endif %}
             {% if (coord.0 + 1, coord.1) not in numbers_checked %}
-              {%- set ns.chars = ns.chars + [rows[coord.0 + 1][coord.1]] -%}
+              {%- set ns.chars = ns.chars + [[coord.0 + 1, coord.1, rows[coord.0 + 1][coord.1]]] -%}
             {% endif %}
             {% if coord.1 + 1 < row_length | int %}
               {% if (coord.0 + 1, coord.1 + 1) not in numbers_checked %}
-                {%- set ns.chars = ns.chars + [rows[coord.0 + 1][coord.1 + 1]] -%}
+                {%- set ns.chars = ns.chars + [[coord.0 + 1, coord.1 + 1, rows[coord.0 + 1][coord.1 + 1]]] -%}
               {% endif %}
             {% endif %}
           {% endif %}
@@ -136,14 +151,58 @@
     # Surrounding chars, trimmed
     surrounding_chars: "{{ _surrounding_chars | trim | from_yaml | map('last') }}"
     # Surrounding chars, without dots
-    surrounding_chars_without_dots: "{{ surrounding_chars | reject('equalto', '.') | list }}"
+    surrounding_chars_without_dots: "{{ surrounding_chars | reject('equalto', '.') }}"
     # Is this number adjacent to a symbol (not a dot)?
     is_adjacent_to_symbol: "{{ surrounding_chars_without_dots | length > 0 }}"
+
+    # PART 2:
+    # Get the surrounding characters, but keep the coordinates
+    surrounding_chars_with_coords: "{{ _surrounding_chars | trim | from_yaml }}"
+    # Surrounding gears (*)
+    surrounding_gears: "{{ surrounding_chars_with_coords | selectattr('2', 'equalto', '*') }}"
+
+    # Get all the gears that are adjacent to the current number
+    # Then loop over them, add the current number to the gears' list in the gears dict
+    # it should end up looking like { x: y: [gears_related_numbers]}
+    # this took so long to get right. fuck this shit
+    _additional_gears_dict: "
+      {%- set ns = namespace(gears_dict = gears_dict | default({} )) -%}
+      {%- for gear in surrounding_gears -%}
+        {%- set gearns = namespace(gears_related_numbers = gears_dict[gear.0][gear.1] | default([])) -%}
+        {%- set gearns.gears_related_numbers = gearns.gears_related_numbers + [number] -%}
+        {%- set ns.gears_dict = ns.gears_dict | combine({gear.0: {gear.1: gearns.gears_related_numbers}}) -%}
+      {%- endfor -%}
+      {{ ns.gears_dict }}"
+
+    additional_gears_dict: "{{ _additional_gears_dict | trim | from_yaml }}"
   loop: "{{ range(0, rows | length) | list | product(range(0, rows[0] | length)) | list }}"
 
-- name: ANSWER TO PART 1 | Sum the integers that are valid
+- name: ANSWER TO PART 1 | Sum the integers that are next to a symbol
   ansible.builtin.debug:
     msg: "{{ numbers | map('int') | sum }}"
 
+- name: Get the gears that have two neighbouring numbers
+  ansible.builtin.set_fact:
+    gear_ratios: "{{ _gear_ratios | trim }}"
+    # flattened_xy_coordinates: "{{ flattened_xy_coordinates }}"
+  vars:
+    # Get the numbers without the coordinates (we just needed the coordinates earlier so we can know which numbers touch through a gear)
+    flattened_numbers: "{{ gears_dict | dict2items | json_query('[].value') | map('dict2items') | flatten | json_query('[].value') }}"
+
+    # Get the numbers that have two neighbours
+    # Use a JMESPath query to get the numbers that have two neighbours
+    # This was hellish too i fucking hate this
+    equal_to_two: "{{ flattened_numbers | json_query('[? length(@) == `2`]') }}"
+
+    # Now for every pair we multiply them together..... almost there.. my sanity is dwindling
+    _gear_ratios: "
+      {%- set ns = namespace(new_list = []) -%}
+      {% for pair in equal_to_two %}
+        {%- set ns.new_list = ns.new_list + [pair.0 | int * pair.1 | int] -%}
+      {% endfor %}{{ ns.new_list }}"
+
+- name: ANSWER TO PART 2 | Sum the gear ratios
+  ansible.builtin.debug:
+    msg: "{{ gear_ratios | map('int') | sum }}"
 
 ...
