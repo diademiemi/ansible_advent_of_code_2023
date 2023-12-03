@@ -1,0 +1,149 @@
+---
+# Set the input
+- name: Set example input
+  ansible.builtin.set_fact:
+    day3_input: |-
+      467..114..
+      ...*......
+      ..35..633.
+      ......#...
+      617*......
+      .....+.58.
+      ..592.....
+      ......755.
+      ...$.*....
+      .664.598..
+  when: day3_input is not defined
+
+# Get a list we can loop over
+- name: Split input into separate lines
+  ansible.builtin.set_fact:
+    lines: "{{ day3_input | split('\n') }}"
+
+# Create a list of characters for each list (2D array, e.g. [0][0])
+- name: Split rows into columns
+  ansible.builtin.set_fact:
+    rows: "{{ lines | map('list') }}"
+
+# We'll need this to check if we're not going over the limit
+- name: Set the number of rows and row length
+  ansible.builtin.set_fact:
+    rows_length: "{{ rows | length }}"
+    row_length: "{{ rows[0] | length }}"
+
+- name: Loop through every coordinate
+  ansible.builtin.set_fact:
+    coords_checked_already: "{{ coords_checked_already | default([]) + numbers_checked }}"
+    numbers: "{% if is_adjacent_to_symbol | bool %}{{ numbers | default([]) + [number] }}{% else %}{{ numbers | default([]) }}{% endif %}"
+  vars:
+    # Current character
+    current_item: "{{ rows[item.0][item.1] }}"
+    # Is this character a number?
+    current_is_number: "{% if current_item | regex_search('[0-9]') != None %}true{% else %}false{% endif %}"
+    # Every character to the right of the current character
+    look_right: "{{ rows[item.0][item.1 + 1:rows[0] | length] | map('regex_search', '([0-9]+)') }}"
+
+    # Some absolutely fucking abhorrent Jinja2 statement that:
+    # If we have not already checked this coord
+    # Gets the current position, loops over to the right until it finds a non-number character
+    # Every number it adds to the string (which we later cast to int)
+    # Adds to the coordinates we've checked, so we don't get duplicates
+    _look_right_nums: "
+      {% if current_is_number | bool %}
+        {% if [item.0, item.1] not in coords_checked_already | default([]) %}
+          {%- set ns = namespace(has_symbol = false, continues = true, numstring = '', coords_checked = []) -%}
+          {%- set ns.numstring = ns.numstring + current_item -%}
+          {% if ns.numstring != '' %}
+            {%- set ns.coords_checked = ns.coords_checked + [(item.0, item.1)] -%}
+            {% for i in range(0, look_right | length) %}
+              {% if ns.continues %}
+                {% if look_right[i] | regex_search('[0-9]') != None %}
+                  {%- set ns.coords_checked = ns.coords_checked + [(item.0, item.1 + 1 + i)] -%}
+                  {%- set ns.numstring = ns.numstring + look_right[i] -%}
+                {% else %}
+                  {%- set ns.continues = false -%}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endif %}
+      {% endif %}
+      {{ [ns.numstring | default(''),ns.coords_checked | default([])] }}"
+    look_right_nums: "{{ _look_right_nums | trim }}"  # Every indent is taken literally, but I do want to keep them for """readability""", so we trim them
+
+    numbers_checked: "{{ look_right_nums | from_yaml | json_query('[1]') | list }}"
+    number: "{{ look_right_nums | from_yaml | json_query('[0]') }}"
+
+    # Surrounding chars, including diagonals, NOT going in negatives
+    # Apparently it can get worse than the previous statement
+    # Check every surrounding character to the numbers we've checked
+    # Check if it's within the bounds
+    # If it's not also a number we've checked
+    # Add it to a list we return
+    # what the fuck is this shit!
+    _surrounding_chars: "
+      {# COMMENT: Set empty list #}
+      {% set ns = namespace(chars = []) %}
+
+      {% if number != '' %}
+        {% for coord in numbers_checked %}
+
+          {# COMMENT: Check if we wouldn't be going into negative indexing #}
+          {% if coord.0 - 1 >= 0 %}
+            {% if coord.1 - 1 >= 0 %}
+              {# COMMENT: Check if this is a number we checked #}
+              {% if (coord.0 - 1, coord.1 - 1) not in numbers_checked %}
+                {%- set ns.chars = ns.chars + [rows[coord.0 - 1][coord.1 - 1]] -%}
+              {% endif %}
+            {% endif %}
+            {% if (coord.0 - 1, coord.1) not in numbers_checked %}
+              {%- set ns.chars = ns.chars + [rows[coord.0 - 1][coord.1]] -%}
+            {% endif %}
+            {% if coord.1 + 1 < row_length | int %}
+              {% if (coord.0 - 1, coord.1 + 1) not in numbers_checked %}
+                {%- set ns.chars = ns.chars + [rows[coord.0 - 1][coord.1 + 1]] -%}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+          {% if coord.1 - 1 >= 0 %}
+            {% if (coord.0, coord.1 - 1) not in numbers_checked %}
+              {%- set ns.chars = ns.chars + [rows[coord.0][coord.1 - 1]] -%}
+            {% endif %}
+          {% endif %}
+          {% if coord.1 + 1 < row_length | int %}
+            {% if (coord.0, coord.1 + 1) not in numbers_checked %}
+              {%- set ns.chars = ns.chars + [rows[coord.0][coord.1 + 1]] -%}
+            {% endif %}
+          {% endif %}
+          {% if coord.0 + 1 < rows_length | int %}
+            {% if coord.1 - 1 >= 0 %}
+              {% if (coord.0 + 1, coord.1 - 1) not in numbers_checked %}
+                {%- set ns.chars = ns.chars + [rows[coord.0 + 1][coord.1 - 1]] -%}
+              {% endif %}
+            {% endif %}
+            {% if (coord.0 + 1, coord.1) not in numbers_checked %}
+              {%- set ns.chars = ns.chars + [rows[coord.0 + 1][coord.1]] -%}
+            {% endif %}
+            {% if coord.1 + 1 < row_length | int %}
+              {% if (coord.0 + 1, coord.1 + 1) not in numbers_checked %}
+                {%- set ns.chars = ns.chars + [rows[coord.0 + 1][coord.1 + 1]] -%}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+
+        {% endfor %}
+      {% endif %}{{ ns.chars | list }}"
+    # Surrounding chars, trimmed
+    surrounding_chars: "{{ _surrounding_chars | trim | from_yaml | map('last') }}"
+    # Surrounding chars, without dots
+    surrounding_chars_without_dots: "{{ surrounding_chars | reject('equalto', '.') | list }}"
+    # Is this number adjacent to a symbol (not a dot)?
+    is_adjacent_to_symbol: "{{ surrounding_chars_without_dots | length > 0 }}"
+  loop: "{{ range(0, rows | length) | list | product(range(0, rows[0] | length)) | list }}"
+
+- name: ANSWER TO PART 1 | Sum the integers that are valid
+  ansible.builtin.debug:
+    msg: "{{ numbers | map('int') | sum }}"
+
+
+...

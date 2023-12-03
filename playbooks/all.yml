@@ -4,5 +4,6 @@
   roles:
     - { role: day1, tags: ['day1'] }
     - { role: day2, tags: ['day2'] }
+    - { role: day3, tags: ['day3'] }
 
 ...

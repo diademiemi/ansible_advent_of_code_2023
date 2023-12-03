@@ -24,7 +24,7 @@ Day | Challenge | Stars | Reaction | Time to run
 ----|------|:-----:|:---------:|-----------:
 [Day 1](./roles/day1/tasks/main.yml) | [Trebuchet?!](https://adventofcode.com/2023/day/1) | ⭐ ⭐ | 🫠 | 24.18s
 [Day 2](./roles/day2/tasks/main.yml) | [Cube Conundrum](https://adventofcode.com/2023/day/2) | ⭐ ⭐ | 😃 | 3.43s
-[Day 3](./roles/day3/tasks/main.yml) | [](https://adventofcode.com/2023/day/3) | | |
+[Day 3](./roles/day3/tasks/main.yml) | [Gear Ratios](https://adventofcode.com/2023/day/3) | ⭐ | |
 [Day 4](./roles/day4/tasks/main.yml) | [](https://adventofcode.com/2023/day/4) | | |
 [Day 5](./roles/day5/tasks/main.yml) | [](https://adventofcode.com/2023/day/5) | | |
 [Day 6](./roles/day6/tasks/main.yml) | [](https://adventofcode.com/2023/day/6) | | |
