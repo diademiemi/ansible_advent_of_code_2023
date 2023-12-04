@@ -1,4 +1,8 @@
 ---
+# WARNING: THIS TAKES A LONG TIME TO RUN ON REAL INPUT (6 hours!)
+# This entire shitfuckery is exponential as all hell, Ansible was not made to do 190k tasks!
+# Could be optimised I think by doing more logic within the Jinja2 loops, which would be calculated in the main Ansible process
+
 # Set the input
 - name: Set example input
   ansible.builtin.set_fact:

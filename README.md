@@ -24,8 +24,8 @@ Day | Challenge | Stars | Reaction | Time to run
 ----|------|:-----:|:---------:|-----------:
 [Day 1](./roles/day1/tasks/main.yml) | [Trebuchet?!](https://adventofcode.com/2023/day/1) | ⭐ ⭐ | 🫠 | 24.18s
 [Day 2](./roles/day2/tasks/main.yml) | [Cube Conundrum](https://adventofcode.com/2023/day/2) | ⭐ ⭐ | 😃 | 3.43s
-[Day 3](./roles/day3/tasks/main.yml) | [Gear Ratios](https://adventofcode.com/2023/day/3) | ⭐ | |
-[Day 4](./roles/day4/tasks/main.yml) | [](https://adventofcode.com/2023/day/4) | | |
+[Day 3](./roles/day3/tasks/main.yml) | [Gear Ratios](https://adventofcode.com/2023/day/3) | ⭐ ⭐ | 😵😵😵 | 6h 58m 26.30s
+[Day 4](./roles/day4/tasks/main.yml) | [Scratchcards](https://adventofcode.com/2023/day/4) | ⭐ ⭐ | 😀...🤯 | 7.29s
 [Day 5](./roles/day5/tasks/main.yml) | [](https://adventofcode.com/2023/day/5) | | |
 [Day 6](./roles/day6/tasks/main.yml) | [](https://adventofcode.com/2023/day/6) | | |
 [Day 7](./roles/day7/tasks/main.yml) | [](https://adventofcode.com/2023/day/7) | | |
@@ -85,4 +85,4 @@ The following Jinja2 Filters are also available: [List of Jinja2 filters](https:
 While the filters and Jinja2 templating engine is primarily made to write configuration files, it is available in-line in Ansible tasks. Ansible's flow control statements interpret the input as a Jinja2 template, which is what allows for most of the flexibility you see here. Any text put inside Jinja2 delimiters will be interpreted as Jinja2 for any text, this allows for data manipulation and finer flow control.  
 
 ## [License](#license)
-The code is licensed under the MIT license, feel free to take inspiration
+The code is licensed under the [CC-0 license](./LICENSE), making it public domain. Feel free to take inspiration from this shit. I really don't care, this is such a waste of my time that if someone else can gain from it, feel free!
