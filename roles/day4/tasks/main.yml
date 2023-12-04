@@ -1,0 +1,113 @@
+---
+# Set the input
+- name: Set example input
+  ansible.builtin.set_fact:
+    day4_input: |-
+      Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
+      Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
+      Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+      Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
+      Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
+      Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
+  when: day4_input is not defined
+
+# Get a list we can loop over
+- name: Split input into separate lines
+  ansible.builtin.set_fact:
+    lines: "{{ day4_input | split('\n') }}"
+
+# Store as dict with the game number as key. We can loop over this later, allows us to easily get the game ID
+- name: Store as dict with the game number as key
+  ansible.builtin.set_fact:
+    games_dict: "{{ games_dict | default({}) | combine({game_id: game_line}) }}"
+  loop: "{{ lines }}"
+  vars:
+    game_id: "{{ item | regex_findall('[0-9]+') | first }}"
+    # Remove the card number, remove duplicate whitespace
+    game_line: "{{ item | regex_replace('^Card[ ]+[0-9]+: ', '') | regex_replace('[ ]+', ' ') }}"
+
+# Loop over the dict and set the points
+- name: Loop over games
+  ansible.builtin.set_fact:
+    points: "{{ points | default([]) + [current_points] }}"
+  loop: "{{ games_dict | dict2items }}"
+  vars:
+    game_id: "{{ item.key }}"
+    game_line: "{{ item.value }}"
+    # Get the numvers as a list
+    game_numbers: "{{ game_line | trim | split(' | ') | first | trim | split(' ') | map('trim') | list }}"
+    # Get the winners as a list
+    game_winners: "{{ game_line | trim | split(' | ') | last | trim | split(' ') | map('trim') | list }}"
+    # Get the intersection of the numbers and winners, this shows the winning numbers
+    game_winning_numbers: "{{ game_numbers | intersect(game_winners) }}"
+    # If no winners, points is 0, otherwise 2 to the power of the number of winners - 1
+    current_points: "{% if game_winning_numbers | length > 0 %}{{ 2 ** (game_winning_numbers | length - 1) }}{% else %}0{% endif %}"
+
+- name: ANSWER TO PART 1 | Sum the points
+  ansible.builtin.debug:
+    msg: "{{ points | map('int') | sum }}"
+
+# So... part 2 is recursion. this will not be fun.
+# I'm deathly afraid of this part
+
+- name: Set list of cards
+  ansible.builtin.set_fact:
+    cards: "{{ cards | default([]) + [current_card] }}"
+  loop: "{{ games_dict | dict2items }}"
+  vars:
+    current_card: "{{ [item.key, item.value] }}"
+
+
+# Set list like [number of wins in this card, number of copies of this card]
+# We set the number of copies of this card to 1 for now, we'll update it later
+- name: Set list of cards and their wins
+  ansible.builtin.set_fact:
+    # List of lists, each list is [number of wins in this card, number of copies in this card (we keep this at 1 for now)]
+    card_counts: "{{ card_counts | default([]) + [[new_cards_length, 1]] }}"
+  loop: "{{ cards }}"
+  vars:
+    # Same calcs as before, now as a list, we don't care about the games anymore!
+    current_card: "{{ [item.key, item.value] }}"
+    game_id: "{{ item[0] }}"
+    game_line: "{{ item[1] }}"
+
+    game_numbers: "{{ game_line | trim | split(' | ') | first | trim | split(' ') | map('trim') | list }}"
+    game_winners: "{{ game_line | trim | split(' | ') | last | trim | split(' ') | map('trim') | list }}"
+
+    game_winning_numbers: "{{ game_numbers | intersect(game_winners) }}"
+
+    # How many winning numbers are there in this card? This is how many copies of the NEXT card there will be
+    new_cards_length: "{{ game_winning_numbers | length }}"
+
+# One of the worst tasks ever.
+# Doesn't look like much, but this logic took hours to figure out. 
+# Thanks @Quantum-Cucumber for the help! Your name is now forever attached to this hellhole of an Ansible project :).
+- name: Update the copies of each card
+  ansible.builtin.set_fact:
+    card_counts_copies: "{{ _card_counts | from_yaml }}"
+  vars:
+    # FUCKED UP!
+    # Set a dict, loop over every card
+    # For each win of this card, add the amount of copies of this card to the amount of copies to the next X cards, where X is the amount of wins of this card
+    # By doing it this way, we avoid an exponential loop, or needing to extend the loop variable while in the loop, both of which Ansible does not support
+    _card_counts: "
+      {# COMMENT: Set temporary dict #}
+      {%- set ns = namespace(card_counts=card_counts) -%}
+      {# COMMENT: For every card #}
+      {%- for index in range(card_counts | length) -%}
+        {# COMMENT: Loop over every card below this card for each amount of wins #}
+        {%- for i in range(index + 1, index + card_counts[index][0] | int + 1) -%}
+          {# Create a new list element with updated value and replace the old one #}
+          {%- set new_element = [ns.card_counts[i][0], ns.card_counts[i][1] + ns.card_counts[index][1] | int] -%}
+          {# COMMENT: Commit changes. we can't update the list entries inline in Jinja2, so we use this method.. #}
+          {%- set ns.card_counts = ns.card_counts[:i] + [new_element] + ns.card_counts[i+1:] -%}
+        {%- endfor -%}
+      {%- endfor -%}
+      {{ ns.card_counts }}"
+
+# Get the copies of each card, sum them
+- name: ANSWER TO PART 2 | Get how many cards are in the stack
+  ansible.builtin.debug:
+    msg: "{{ card_counts_copies | map(attribute='1') | map('int') | sum }}"
+
+...
