@@ -3,7 +3,11 @@
 - name: Set example input
   ansible.builtin.set_fact:
     day7_input: |-
-      JJJ34 1
+      32T3K 765
+      T55J5 684
+      KK677 28
+      KTJJT 220
+      QQQJA 483
   when: day7_input is not defined
 
 # This is for later to determine the winner in ties
