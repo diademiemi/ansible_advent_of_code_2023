@@ -1,0 +1,38 @@
+- name: Set example var
+  ansible.builtin.set_fact:
+    my_var: |-
+      Example 1: Message is Hello
+      Example 2: Message is World
+      Example 3: Message is Goodbye
+      Example 4: Message is World
+
+- name: Convert my_var to a dictionary
+  ansible.builtin.debug:
+    msg: "{{ my_var | split('\n') | map('split', ': ') | list }}"
+
+- name: Split lines
+  ansible.builtin.set_fact:
+    lines: "{{ my_var | split('\n') }}"
+
+
+- name: Convert my_var to a BETTER dictionary
+  ansible.builtin.set_fact:
+    my_dict: "{{ my_dict | default({}) | combine(add_to_dict) }}"
+  loop: "{{ lines }}"
+  # Temporary variables
+  vars:
+    # Example: ["Example 1", "Message is Hello"]
+    current_line_split: "{{ item | split(': ') }}"
+
+    # Example: 1
+    id: "{{ current_line_split[0] | regex_search('[0-9]+') }}"
+    
+    # Example: "Hello"
+    message: "{{ current_line_split[1] | regex_replace('^Message is ', '') }}"
+
+    add_to_dict: "{{ {id: message} }}"
+
+- name: Show dict
+  ansible.builtin.debug:
+    msg: "{{ my_dict }}"
+

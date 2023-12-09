@@ -26,11 +26,11 @@ Day | Challenge | Stars | Reaction | Time to run
 [Day 2](./roles/day2/tasks/main.yml) | [Cube Conundrum](https://adventofcode.com/2023/day/2) | ⭐ ⭐ | 😃 | 3.43s
 [Day 3](./roles/day3/tasks/main.yml) | [Gear Ratios](https://adventofcode.com/2023/day/3) | ⭐ ⭐ | 😵😵😵 | 6h 58m 26.30s
 [Day 4](./roles/day4/tasks/main.yml) | [Scratchcards](https://adventofcode.com/2023/day/4) | ⭐ ⭐ | 😀...🤯 | 7.29s
-[Day 5](./roles/day5/tasks/main.yml) | [](https://adventofcode.com/2023/day/5) | | |
-[Day 6](./roles/day6/tasks/main.yml) | [](https://adventofcode.com/2023/day/6) | | |
-[Day 7](./roles/day7/tasks/main.yml) | [](https://adventofcode.com/2023/day/7) | | |
-[Day 8](./roles/day8/tasks/main.yml) | [](https://adventofcode.com/2023/day/8) | | |
-[Day 9](./roles/day9/tasks/main.yml) | [](https://adventofcode.com/2023/day/9) | | |
+[Day 5](./roles/day5/tasks/main.yml) | [If You Give A Seed A Fertilizer](https://adventofcode.com/2023/day/5) | | 🫥 |
+[Day 6](./roles/day6/tasks/main.yml) | [Wait For It](https://adventofcode.com/2023/day/6) | ⭐ ⭐ | 🤯...😀 | 5m 8.31s
+[Day 7](./roles/day7/tasks/main.yml) | [Camel Cards](https://adventofcode.com/2023/day/7) | ⭐ ⭐ | 🥶 | 2m 19.54s
+[Day 8](./roles/day8/tasks/main.yml) | [Haunted Wasteland](https://adventofcode.com/2023/day/8) | | |
+[Day 9](./roles/day9/tasks/main.yml) | [Mirage Maintenance](https://adventofcode.com/2023/day/9) | | |
 [Day 10](./roles/day10/tasks/main.yml) | [](https://adventofcode.com/2023/day/10) | | |
 [Day 11](./roles/day11/tasks/main.yml) | [](https://adventofcode.com/2023/day/11) | | |
 [Day 12](./roles/day12/tasks/main.yml) | [](https://adventofcode.com/2023/day/12) | | |

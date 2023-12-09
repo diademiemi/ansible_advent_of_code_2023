@@ -1,0 +1,97 @@
+---
+# Set the input
+- name: Set example input
+  ansible.builtin.set_fact:
+    day6_input: |-
+      Time:      7  15   30
+      Distance:  9  40  200
+  when: day6_input is not defined
+
+# Just split the input into a list of lists and remove unnecessary whitespace
+- name: Get a list of times and distances
+  ansible.builtin.set_fact:
+    unprocessed_list: "{{ unprocessed_list | default([]) + [current_time_dict] }}"
+  vars:
+    current_time_dict: "{{ item[1] | trim | regex_replace('[ ]+', ' ') | split(' ') | map('trim') | list }}"
+  loop: "{{ day6_input | split('\n') | map('split', ': ') | list }}"
+
+# Set a list of lists, each list is [time, distance]
+- name: Set list of "time - distance"
+  ansible.builtin.set_fact:
+    time_distance_list: "{{ time_distance_list | default([]) + [current_time_distance] }}"
+  vars:
+    current_time_distance: "{{ [item[0], item[1]] }}"
+  loop: "{{ unprocessed_list[0] | zip(unprocessed_list[1]) | list }}"
+
+# Some brute force that just checks how many wins there are for each time-distance pair
+- name: Calculate wins for each time-distance pair
+  ansible.builtin.set_fact:
+    possible_wins: "{{ possible_wins | default([]) + [bruteforce_wins | trim] }}"
+  vars:
+    duration: "{{ item[0] | int }}"
+    distance: "{{ item[1] | int }}"
+    # STUPID QUADRATICS SHIT IM TOO DUMB FOR! I DROPPED OUT OF HIGH SCHOOL
+    # max_time: "{{ (duration | int + ((duration | int ** 2) - (4 * distance | int)) ** 0.5) / 2 }}"
+    # min_time: "{{ (duration | int - ((duration | int ** 2) - (4 * distance | int)) ** 0.5) / 2 }}"
+
+    # SHIT. DOESNT. FUCKING. WORK!
+    # Why is the 3rd one wrong??
+    # max_time_floor: "{{ max_time | int }}"
+    # min_time_ceil: "{{ min_time | int + 1 }}"
+
+    # No!!!!! im off by one!
+    # possible_wins_current: "{{ max_time_floor | int - min_time_ceil | int  + 1 }}"
+
+    # Brute force solution:
+    bruteforce_wins: "
+      {%- set ns = namespace(count = 0) -%}
+      {% for i in range(0, duration | int) %}
+        {% if (i * duration | int - i | int ** 2 ) > distance | int %}
+          {%- set ns.count = ns.count | int + 1 -%}
+        {% endif %}
+      {% endfor %}
+      {{ ns.count }}"
+  loop: "{{ time_distance_list }}"
+
+# Multiply them with each other
+- name: Multiply every win count with each other
+  ansible.builtin.set_fact:
+    multiplied_values: "{{ multiplied_values | default(possible_wins[item]) | int * possible_wins[item + 1] | int }}"
+  loop: "{{ range(0, possible_wins | length - 1) }}"
+
+# Return the multiplied results
+- name: ANSWER TO PART 1 | Return product of all wins
+  ansible.builtin.debug:
+    msg: "{{ multiplied_values }}"
+
+# Just remove the whitespace and get the numbers
+- name: Get a list of times and distances without whitespace
+  ansible.builtin.set_fact:
+    duration: "{{ split_lines[0][1] | regex_replace('[ ]+', '') | trim | int }}"
+    distance: "{{ split_lines[1][1] | regex_replace('[ ]+', '') | trim | int }}"
+  vars:
+    split_lines: "{{ day6_input | split('\n') | map('split', ':') | list }}"
+
+# So this part is obviously designed to deter you from using brute force and use quadratic equations instead.
+# I dont give a fuck! I'll run it overnight if I have to! Fuck off!
+- name: Calculate wins for this one integer.
+  ansible.builtin.set_fact:
+    possible_wins_part2: "{{ bruteforce_wins }}"
+  vars:
+    bruteforce_wins: "
+      {%- set ns = namespace(count = 0) -%}
+      {% for i in range(0, duration | int) %}
+        {% if (i * duration | int - i | int ** 2 ) > distance | int %}
+          {%- set ns.count = ns.count | int + 1 -%}
+        {% endif %}
+      {% endfor %}
+      {{ ns.count }}"
+
+# Get the copies of each card, sum them
+- name: ANSWER TO PART 2 | Return how many wins there are
+  ansible.builtin.debug:
+    msg: "{{ possible_wins_part2 | trim }}"
+
+# cool that worked
+# lesson learnt. dont bother with math. im too dumb for that shit
+...

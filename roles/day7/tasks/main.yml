@@ -1,0 +1,225 @@
+---
+# Set the input
+- name: Set example input
+  ansible.builtin.set_fact:
+    day7_input: |-
+      JJJ34 1
+  when: day7_input is not defined
+
+# This is for later to determine the winner in ties
+- name: Set card values
+  ansible.builtin.set_fact:
+    card_priorities:
+      '2': 2
+      '3': 3
+      '4': 4
+      '5': 5
+      '6': 6
+      '7': 7
+      '8': 8
+      '9': 9
+      'T': 10
+      'J': 11
+      'Q': 12
+      'K': 13
+      'A': 14
+
+# So what we're gonna do is collapse how many times each card appears in the hand
+# If we sort this, we can easily check for pairs, three of a kind, etc
+# We can do this by getting the list of how many times each card appears, then sorting it and joining it as a string
+# e.g. T55J5 can get sorted down to [3, 1, 1] and then joined to "311", which is three of a kind
+- name: Set priorities for hand types
+  ansible.builtin.set_fact:
+    hand_types:
+      '5': 6  # Five of a kind
+      '41': 5  # Four of a kind
+      '32': 4  # Full house
+      '311': 3  # Three of a kind
+      '221': 2  # Two pairs
+      '2111': 1  # One pair
+      '11111': 0  # High card
+
+# Get a list we can loop over
+- name: Split input into separate lines
+  ansible.builtin.set_fact:
+    lines: "{{ day7_input | split('\n') }}"
+
+# Store as list of dicts with the hand, bid, strengths, and type
+- name: For every hand (line), get the hand type
+  ansible.builtin.set_fact:
+    hands: "{{ hands | default([]) + [current_hand] }}"
+  loop: "{{ lines }}"
+  vars:
+    hand: "{{ item | split(' ') | first }}"
+    bid: "{{ item | split(' ') | last }}"
+
+    # Get the hand as a list
+    hand_list: "{{ hand | list }}"
+    # Get how many times each card appears in the hand
+    hand_list_counted: "{{ hand_list | community.general.counter }}"
+
+    # Ensure they're in order from highest to lowest
+    handlist_sorted: "{{ hand_list_counted | dict2items | map(attribute='value') | sort | reverse | join('') }}"
+
+    # We sort with the card priorities, so we can easily compare them later
+    strengths: "{{ [card_priorities[hand_list.0], card_priorities[hand_list.1], card_priorities[hand_list.2], card_priorities[hand_list.3], card_priorities[hand_list.4]] }}"
+
+    # Return the hand as a dict with the bid, strengths, and type
+    current_hand: "{{ {'hand': hand, 'bid': bid, 'strengths': strengths, 'type': hand_types[handlist_sorted]} }}"
+
+# Sort the types into seperate dicts so we can sort inside the types later
+- name: Select hands by type and sort them
+  ansible.builtin.set_fact:
+    hands_sorted: "{{ hands_sorted_per_category | reverse | flatten }}"
+  vars:
+    # Get them per category,
+    # then sort them by strength
+    # Store this in a temporary list we then reverse (so it goes from highest type to lowest)
+    # and then flatten it (this preserves orders in sublists)
+    hands_sorted_per_category: [
+      "{{ hands | selectattr('type', 'eq', 0) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 1) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 2) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 3) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 4) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 5) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 6) | list | sort(attribute='strengths') | reverse }}",
+    ]
+
+- name: Multiply the bid by the index
+  ansible.builtin.set_fact:
+    winnings: "{{ winnings | default([]) + [item.bid | int * (loop_index | int + 1)] }}"
+  loop: "{{ hands_sorted | reverse }}"
+  loop_control:
+    index_var: loop_index
+
+- name: ANSWER TO PART 1 | Return sum of wins
+  ansible.builtin.debug:
+    msg: "{{ winnings | map('int') | sum }}"
+
+- name: Reset vars for part 2
+  ansible.builtin.set_fact:
+    hands: []
+    hands_sorted: []
+    winnings: []
+
+# Set new card values
+- name: Set card values
+  ansible.builtin.set_fact:
+    card_priorities:
+      '2': 2
+      '3': 3
+      '4': 4
+      '5': 5
+      '6': 6
+      '7': 7
+      '8': 8
+      '9': 9
+      'T': 10
+      'J': 1  # This is absolutely unnecessary to include since we replace them with a random value later, this defaults to 1
+      'Q': 12
+      'K': 13
+      'A': 14
+
+# The new rule says:
+# J cards can pretend to be whatever card is best for the purpose of determining hand type; for example, QJJQ2 is now considered four of a kind. 
+# This basically just means for every joker in the hand, we can turn the hand into the best possible hand
+- name: Set new mapping of joker upgrades
+  ansible.builtin.set_fact:
+    joker_upgrades:
+      6: 6  # Five of a kind stays the same
+      5: 6  # Four of a kind becomes five of a kind
+      4: 5  # Full house becomes four of a kind
+      3: 5  # Three of a kind can become four of a kind too!
+      2: 4  # Two pairs becomes full house
+      1: 3  # One pair becomes three of a kind
+      0: 1  # High card becomes two pairs
+
+
+# UGLY WARNING!!! IT GETS FUCKY WUCKY HERE
+- name: For every hand (line), get the hand type
+  ansible.builtin.set_fact:
+    hands: "{{ hands | default([]) + [current_hand] }}"
+  loop: "{{ lines }}"
+  vars:
+    hand: "{{ item | split(' ') | first }}"
+    bid: "{{ item | split(' ') | last }}"
+
+    # Get the hand as a list
+    hand_list: "{{ hand | list }}"
+
+    # We need to replace the Js with some random values do we don't start off with a too high hand type
+    # e.g. JJJ34 can't start off as a three of a kind, since that would upgrade it to a five of a kind, when that obviously isn't possible
+    # We just use ZYXWV here since they're not already cards
+    _hand_list_j_replaced: "
+      {%- set replacementmap = {
+        0: 'Z',
+        1: 'Y',
+        2: 'X',
+        3: 'W',
+        4: 'V'
+      } -%}
+      {%- set ns = namespace(hand_list = hand_list) -%}
+      {% for i in range(0, hand_list | length) %}
+        {% if hand_list[i] == 'J' %}
+          {%- set new_element = replacementmap[i] -%}
+          {%- set ns.hand_list = ns.hand_list[:i] + [new_element] + ns.hand_list[i+1:] -%}
+        {% endif %}
+      {% endfor %}
+      {{ ns.hand_list }}"
+
+    hand_list_j_replaced: "{{ _hand_list_j_replaced | trim | from_yaml }}"
+
+    j_count: "{{ hand_list | select('eq', 'J') | list | length }}"
+
+    # # Get how many times each card appears in the hand
+    hand_list_counted: "{{ hand_list_j_replaced | community.general.counter}}"
+
+    # Ensure they're in order from highest to lowest
+    handlist_sorted: "{{ hand_list_counted | dict2items | map(attribute='value') | sort | reverse | join('') }}"
+
+    vanilla_hand_type: "{{ hand_types[handlist_sorted] }}"
+
+    # For every J, use the lookup map to get the new hand type
+    hand_type: "
+      {%- set ns = namespace(hand_type = vanilla_hand_type) -%}
+      {% for i in range(0, j_count | int) %}
+        {%- set ns.hand_type = joker_upgrades[ns.hand_type | int] -%}
+      {% endfor %}
+      {{ ns.hand_type }}"
+
+    # We sort with the card priorities, so we can easily compare them later
+    # this line is ugly.
+    # i dont care!
+    strengths: "{{ [card_priorities[hand_list_j_replaced.0] | default(1), card_priorities[hand_list_j_replaced.1] | default(1), card_priorities[hand_list_j_replaced.2] | default(1), card_priorities[hand_list_j_replaced.3] | default(1), card_priorities[hand_list_j_replaced.4] | default(1)] }}"
+
+    # Return the hand as a dict with the bid, strengths, and type
+    current_hand: "{{ {'hand': hand, 'bid': bid, 'strengths': strengths, 'type': hand_type | trim | int} }}"
+
+# Exact same deal as before!
+- name: Select hands by type and sort them
+  ansible.builtin.set_fact:
+    hands_sorted: "{{ hands_sorted_per_category | reverse | flatten }}"
+  vars:
+    hands_sorted_per_category: [
+      "{{ hands | selectattr('type', 'eq', 0) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 1) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 2) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 3) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 4) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 5) | list | sort(attribute='strengths') | reverse }}",
+      "{{ hands | selectattr('type', 'eq', 6) | list | sort(attribute='strengths') | reverse }}",
+    ]
+
+- name: Multiply the bid by the index
+  ansible.builtin.set_fact:
+    winnings: "{{ winnings | default([]) + [item.bid | int * (loop_index | int + 1)] }}"
+  loop: "{{ hands_sorted | reverse }}"
+  loop_control:
+    index_var: loop_index
+
+- name: ANSWER TO PART 2 | Return sum of wins
+  ansible.builtin.debug:
+    msg: "{{ winnings | map('int') | sum }}"
+
+...
