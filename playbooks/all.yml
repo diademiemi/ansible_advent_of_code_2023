@@ -7,6 +7,7 @@
     - { role: day2, tags: ['day2'] }
     - { role: day3, tags: ['day3'] }
     - { role: day4, tags: ['day4'] }
+    - { role: day5, tags: ['day5'] }
     - { role: day6, tags: ['day6'] }
     - { role: day7, tags: ['day7'] }
 

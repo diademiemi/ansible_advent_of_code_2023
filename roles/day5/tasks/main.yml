@@ -97,55 +97,41 @@
 
 - name: Reset vars for part 2
   ansible.builtin.set_fact:
-    seeds: []
     seeds_converted: []
+    seeds: []
 
 # Part 2, seeds are pairs of numbers + range. Just grab the pairs. We use a regex here since regexes don't overlap by default
 - name: Get number pairings
   ansible.builtin.set_fact:
-    number_pairings: "{{ day5_input | split('\n\n') | first | regex_replace('^seeds: ', '') | regex_findall('\\d+ \\d+') | list }}"
+    number_pairings: "{{ day5_input | split('\n\n') | first | regex_replace('^seeds: ', '') | regex_findall('\\d+ \\d+') | list | map('split', ' ') | map('map', 'int') | list }}"
 
-# FUCK IT JUST BRUTEFORCE
-# Just generate a list with every seed number
-- name: Loop over number pairings
-  ansible.builtin.set_fact:
-    seeds: "{{ seeds | default([]) + new_numbers | trim | from_yaml | list | map('int') }}"
-  loop: "{{ number_pairings | map('split', ' ') | list }}"
-  vars:
-    new_numbers: "
-      {% set ns = namespace(new_numbers = []) %}
-      {% for j in range(item.0 | int, (item.0 | int + item.1 | int)) %}
-        {% set ns.new_numbers = ns.new_numbers + [j] %}
-      {% endfor %}
-      {{ ns.new_numbers }}"
+# # FUCK IT JUST BRUTEFORCE
+# # Just generate a list with every seed number
+# - name: Loop over number pairings
+#   ansible.builtin.set_fact:
+#     seeds: "{{ seeds | default([]) + new_numbers | trim | from_yaml | list | map('int') }}"
+#   loop: "{{ number_pairings | map('split', ' ') | list }}"
+#   vars:
+#     new_numbers: "
+#       {% set ns = namespace(new_numbers = []) %}
+#       {% for j in range(item.0 | int, (item.0 | int + item.1 | int)) %}
+#         {% set ns.new_numbers = ns.new_numbers + [j] %}
+#       {% endfor %}
+#       {{ ns.new_numbers }}"
 
-- name: Convert ranges for each seed
-  ansible.builtin.set_fact:
-    seeds_converted: "{{ convert_range | trim | from_yaml | list | map('int') }}"
-  vars:
-    # This version is more efficient. It doesn't use Ansible loops, it loops inside Jinja
-    # This is much faster as it doesn't generate an ansiballz for each loop
-    # It kinda feels cheaty, but this would take FOREVER otherwise
-    convert_range: "
-      {%- set ns = namespace(seeds = seeds) -%}
-      {% for index in range(0, seeds | length) %}
-        {% for mapping in maps_dict | dict2items %}
-          {%- set breakns = namespace(break = false) -%}
-          {% for dst_start, src_start, size in mapping.value | map('split', ' ') | map('map', 'int') | list %}
-            {% if not breakns.break | bool %}
-              {% if ns.seeds[index] | int >= src_start | int and ns.seeds[index] | int < src_start | int + size | int %}
-                {%- set ns.seeds = ns.seeds[:index] + [dst_start | int + (ns.seeds[index] | int - src_start | int)] + ns.seeds[index+1:] -%}
-                {%- set breakns.break = true -%}
-              {% endif %}
-            {% endif %}
-          {% endfor %}
-        {% endfor %}
-      {% endfor %}
-      {{ ns.seeds }}"
+# YEAHHHHH okay brute forcing isn't gonna work here. It'd probably work for a sane programming language, but that single previous task did not show any sign of progress
+# after running for 11, YES, ELEVEN HOURS.
 
-- name: ANSWER TO PART 2 | Get the lowest seed location with seed ranges
-  ansible.builtin.debug:
-    msg: "{{ seeds_converted | min }}"
+# ok no im too dumb for this maybe a different brute force approach?
+
+# - name: Create list of all seeds
+#   ansible.builtin.set_fact:
+#     seeds: "{{ seeds | default([]) + new_seeds | list | map('int') }}"
+#   loop: "{{ number_pairings }}"
+#   vars:
+#     new_seeds: "{{ range(item.0, item.0 + item.1) }}"
+
+# Aaaaand that literally just made Ansible eat up 40GB of RAM and caused my computer to freeze. I'm gonna need to be smarter about this.
 
 ...
 
