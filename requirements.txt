@@ -1,0 +1,6 @@
+yamllint
+ansible-lint
+ansible
+ansible-compat
+antsibull-changelog
+
